@@ -107,11 +107,14 @@ For the normalize endpoint, wrap the raw sample like this:
 }
 ```
 
-Live mode is intentionally optional. Install and configure SDKs only on the
-backend/server side:
+Live mode is intentionally optional. The browser sends only resource identifiers
+such as an S3 bucket name or Azure Storage Account name; cloud credentials stay
+on the backend/server side.
 
-- AWS: `boto3`, with `AWS_PROFILE` and/or `AWS_REGION`
-- Azure: `azure-identity`, `azure-mgmt-storage`, with Azure environment credentials
+- AWS: install `boto3`, then set `AWS_PROFILE` and/or `AWS_REGION` on the backend
+- Azure: install `azure-identity` and `azure-mgmt-storage`, then set
+  `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and Azure service principal
+  environment variables on the backend
 
 Do not place access keys, secret keys, or tokens in frontend code or browser
 storage. Use `backend/.env.example` as a template and keep real credentials in

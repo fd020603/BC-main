@@ -7,6 +7,7 @@ import type { CloudDiscoveryResponse, JsonObject } from "./workspace-types";
 import { ActionButton, ErrorBanner, TextList } from "./workspace-ui";
 
 type Provider = "aws" | "azure";
+type DiscoveryMode = "live" | "mock";
 
 function boolToState(value: unknown) {
   if (value === true) {
@@ -55,6 +56,7 @@ export function CloudDiscoveryPanel({
   onApply: (normalized: JsonObject) => void;
 }) {
   const [provider, setProvider] = useState<Provider>("aws");
+  const [mode, setMode] = useState<DiscoveryMode>("live");
   const [resourceId, setResourceId] = useState("");
   const [region, setRegion] = useState("");
   const [subscriptionId, setSubscriptionId] = useState("");
@@ -70,16 +72,24 @@ export function CloudDiscoveryPanel({
     setErrorMessage(null);
 
     try {
+      if (!resourceId.trim()) {
+        throw new Error(
+          provider === "aws"
+            ? "S3 bucket name을 입력해 주세요."
+            : "Storage Account name을 입력해 주세요.",
+        );
+      }
+
       const endpoint = provider === "aws" ? "/api/v1/cloud-discovery/aws" : "/api/v1/cloud-discovery/azure";
       const response = await fetchJson<CloudDiscoveryResponse>(endpoint, {
         method: "POST",
         body: JSON.stringify({
           resource_type: resourceType,
-          resource_id: resourceId || (provider === "aws" ? "sample-bucket" : "samplestorage"),
+          resource_id: resourceId.trim(),
           region: provider === "aws" ? region || null : undefined,
           subscription_id: provider === "azure" ? subscriptionId || null : undefined,
           resource_group: provider === "azure" ? resourceGroup || null : undefined,
-          mode: "mock",
+          mode,
         }),
       });
       setResult(response);
@@ -102,24 +112,42 @@ export function CloudDiscoveryPanel({
             클라우드에서 기술 입력값 가져오기
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
-            법적 판단값은 가져오지 않고, 리전과 보안 설정처럼 확인 가능한 기술 사실만 반영합니다.
+            ID만 브라우저에서 보내고 실제 인증정보는 백엔드 환경변수나 서버 AWS/Azure credential에서 읽습니다.
           </p>
         </div>
-        <div className="flex rounded-lg border border-[var(--color-line)] bg-white p-1">
-          {(["aws", "azure"] as Provider[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setProvider(item)}
-              className={`rounded-md px-3 py-2 text-sm font-semibold ${
-                provider === item
-                  ? "bg-[var(--color-accent)] text-white"
-                  : "text-[var(--color-muted)]"
-              }`}
-            >
-              {item.toUpperCase()}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          <div className="flex rounded-lg border border-[var(--color-line)] bg-white p-1">
+            {(["aws", "azure"] as Provider[]).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setProvider(item)}
+                className={`rounded-md px-3 py-2 text-sm font-semibold ${
+                  provider === item
+                    ? "bg-[var(--color-accent)] text-white"
+                    : "text-[var(--color-muted)]"
+                }`}
+              >
+                {item.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div className="flex rounded-lg border border-[var(--color-line)] bg-white p-1">
+            {(["live", "mock"] as DiscoveryMode[]).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setMode(item)}
+                className={`rounded-md px-3 py-2 text-sm font-semibold ${
+                  mode === item
+                    ? "bg-[var(--color-accent)] text-white"
+                    : "text-[var(--color-muted)]"
+                }`}
+              >
+                {item === "live" ? "실제 조회" : "Mock"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -177,7 +205,7 @@ export function CloudDiscoveryPanel({
 
       <div className="mt-5 flex flex-wrap gap-3">
         <ActionButton
-          label="클라우드에서 값 가져오기"
+          label={mode === "live" ? "온라인에서 값 가져오기" : "Mock 값 정규화"}
           onClick={() => void runDiscovery()}
           active={isBusy}
           disabled={isBusy}

@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict
 
 
@@ -35,9 +36,13 @@ def collect_azure_storage_account_live(
             "Azure credentials."
         ) from exc
 
+    subscription_id = subscription_id or os.getenv("AZURE_SUBSCRIPTION_ID")
+    resource_group = resource_group or os.getenv("AZURE_RESOURCE_GROUP")
+
     if not subscription_id or not resource_group:
         raise RuntimeError(
-            "Azure live discovery requires subscription_id and resource_group."
+            "Azure live discovery requires subscription_id and resource_group. "
+            "You can set AZURE_SUBSCRIPTION_ID and AZURE_RESOURCE_GROUP on the backend."
         )
 
     credential = DefaultAzureCredential()

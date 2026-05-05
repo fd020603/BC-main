@@ -1,3 +1,4 @@
+import os
 from typing import Any, Dict
 
 
@@ -32,7 +33,7 @@ def collect_aws_s3_bucket_live(
             "and configure AWS_PROFILE/AWS_REGION or server-side AWS credentials."
         ) from exc
 
-    s3 = boto3.client("s3", region_name=region)
+    s3 = boto3.client("s3", region_name=region or os.getenv("AWS_REGION") or None)
     discovered: Dict[str, Any] = {
         "bucket_name": bucket_name,
         "region": None,
