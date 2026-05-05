@@ -121,11 +121,22 @@ def _normalize_aws(
         _lookup(
             raw,
             "encryption_at_rest",
+            "encryption.effective",
             "encryption.default_sse_enabled",
             "bucket_encryption.enabled",
         )
     )
-    _append(evidence, normalized, "encryption_at_rest", encryption, "s3.get_bucket_encryption", "high" if encryption is not None else "unknown")
+    _append(evidence, normalized, "encryption_at_rest", encryption, "s3.get_bucket_encryption_or_s3_baseline", "high" if encryption is not None else "unknown")
+    _append(evidence, normalized, "encryption_at_rest_effective", encryption, "s3.get_bucket_encryption_or_s3_baseline", "high" if encryption is not None else "unknown")
+
+    bucket_default_encryption = _as_bool(_lookup(raw, "encryption.default_sse_enabled"))
+    _append(evidence, normalized, "bucket_default_encryption_configured", bucket_default_encryption, "s3.get_bucket_encryption", "high" if bucket_default_encryption is not None else "unknown")
+
+    kms_encryption = _as_bool(_lookup(raw, "encryption.kms_enabled"))
+    _append(evidence, normalized, "kms_encryption_configured", kms_encryption, "s3.get_bucket_encryption", "high" if kms_encryption is not None else "unknown")
+
+    encryption_source = _lookup(raw, "encryption.source")
+    _append(evidence, normalized, "encryption_source", encryption_source, "s3.get_bucket_encryption_or_s3_baseline", "high" if encryption_source else "unknown")
 
     secure_transport = _as_bool(
         _lookup(
@@ -176,6 +187,7 @@ def _normalize_aws(
         provider="aws",
         resource_type=resource_type,
         resource_id=resource_id,
+        normalized_cloud_data=normalized,
         normalized_aws_data=normalized,
         evidence=evidence,
         warnings=warnings,
@@ -248,6 +260,7 @@ def _normalize_azure(
         provider="azure",
         resource_type=resource_type,
         resource_id=resource_id,
+        normalized_cloud_data=normalized,
         normalized_aws_data=normalized,
         evidence=evidence,
         warnings=warnings,

@@ -1,5 +1,5 @@
 {
-  "schema_id": "brazil_lgpd_input_schema_v1",
+  "schema_id": "lgpd_input_schema_v1",
   "schema_name": "Brazil LGPD Cross-Border Review Input Schema",
   "version": "1.0.0",
   "description": "Hybrid input schema for policy-based review of Brazil LGPD international transfer scenarios, privacy notice and data subject rights readiness, processor governance, ANPD-approved safeguards, transparency obligations, and risk/accountability controls.",

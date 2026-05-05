@@ -48,7 +48,7 @@ def build_auto_reviewer_checklist(
     if merged_input.get("contains_sensitive_data") is True:
         checklist.append("민감정보 범위와 처리 필요성, 추가 보호조치 문서를 함께 확인하세요.")
 
-    if pack_id == "brazil_lgpd":
+    if pack_id == "lgpd":
         if merged_input.get("transfer_outside_brazil") is True:
             checklist.append("ANPD 적정성, 승인 보호조치, 예외 경로와 국제이전 투명성 문서를 함께 확인하세요.")
         if merged_input.get("uses_processor") is True:
@@ -66,7 +66,7 @@ def build_auto_reviewer_checklist(
             checklist.append("개인정보 보호책임자 또는 법무 담당자 검토를 거쳐 보완 경로를 확정하세요.")
         return checklist
 
-    if pack_id == "taiwan_pdpa":
+    if pack_id == "taiwan":
         if merged_input.get("transfer_outside_taiwan") is True:
             checklist.append("제21조 국외전송 제한 사유와 수령국 보호수준, 주무기관 제한 여부를 확인하세요.")
         if merged_input.get("uses_commissioned_processor") is True:

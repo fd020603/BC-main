@@ -1,7 +1,10 @@
 import unittest
 
+from app.services.file_loader import load_json_file
+
 from app.services.evaluation_service import evaluate_rules
-from app.services.pack_loader import load_gdpr_pack, load_pack
+from app.services.pack_loader import list_supported_pack_ids, load_gdpr_pack, load_pack
+from app.utils.path_helper import get_sample_input_path
 from app.services.request_merge_service import build_merged_input_from_request
 
 
@@ -185,6 +188,19 @@ class EvaluationServiceTests(unittest.TestCase):
 
         self.assertEqual(result["final_decision"], "manual_review")
         self.assertIn("GDPR Art. 44", result["legal_basis_articles"])
+
+    def test_uk_data_subject_scope_routes_to_manual_review(self):
+        pack_data = load_gdpr_pack("gdpr_pack_v3.json")
+        merged_input = build_base_input()
+        merged_input["data_subject_region"] = "UK"
+
+        result = evaluate_rules(merged_input=merged_input, pack_data=pack_data)
+
+        self.assertEqual(result["final_decision"], "manual_review")
+        self.assertIn(
+            "gdpr-uk-scope-manual-review",
+            [rule["rule_id"] for rule in result["triggered_rules"]],
+        )
 
     def test_required_actions_are_deduplicated(self):
         merged_input = build_base_input()
@@ -405,6 +421,121 @@ class EvaluationServiceTests(unittest.TestCase):
         self.assertTrue(merged_input["transfer_outside_taiwan"])
         self.assertTrue(merged_input["cross_border_transfer"])
         self.assertEqual(merged_input["target_country"], "US")
+
+    def test_pack_registry_and_json_pack_ids_match(self):
+        for pack_id in list_supported_pack_ids():
+            self.assertEqual(load_pack(pack_id)["pack_id"], pack_id)
+
+    def test_gdpr_us_dpf_certification_can_confirm_adequacy_scope(self):
+        merged_input = build_merged_input_from_request(
+            pack_id="gdpr",
+            aws_data={
+                "current_region": "eu-central-1",
+                "encryption_at_rest": True,
+                "data_type": "customer_records",
+                "contains_sensitive_data": False,
+                "uses_processor": False,
+                "encryption_in_transit": True,
+                "access_control_in_place": True,
+            },
+            policy_data={
+                "dataset_name": "eu-us-dpf",
+                "data_subject_region": "EU",
+                "processing_purpose_defined": True,
+                "data_minimized": True,
+                "retention_period_defined": True,
+                "lawful_basis": "contract",
+                "target_region": "us-east-1",
+                "derogation_used": False,
+                "recipient_us_dpf_certified": True,
+            },
+        )
+
+        self.assertTrue(merged_input["adequacy_decision_exists"])
+        self.assertTrue(merged_input["eu_adequacy_decision_exists"])
+        self.assertTrue(merged_input["adequacy_scope_confirmed"])
+        self.assertFalse(merged_input["adequacy_decision_country_only"])
+
+    def test_no_triggered_rules_routes_to_manual_review(self):
+        pack_data = {
+            "pack_id": "test-pack",
+            "pack_name": "Test Pack",
+            "jurisdiction": "TEST",
+            "version": "1.0.0",
+            "description": "No match test pack",
+            "supported_decisions": ["deny", "manual_review", "condition_allow", "allow"],
+            "decision_model": {
+                "precedence": ["deny", "manual_review", "condition_allow", "allow"]
+            },
+            "rules": [
+                {
+                    "rule_id": "never",
+                    "article": "test",
+                    "title": "Never",
+                    "category": "test",
+                    "priority": 1,
+                    "decision": "allow",
+                    "when": {"field": "explicit_allow", "eq": True},
+                    "required_evidence": [],
+                    "required_actions": [],
+                    "message": "explicit allow",
+                    "references": [],
+                }
+            ],
+        }
+
+        result = evaluate_rules({"explicit_allow": False}, pack_data)
+
+        self.assertEqual(result["final_decision"], "manual_review")
+        self.assertEqual(result["evaluation_trace"]["matched_rule_count"], 0)
+
+    def test_unknown_pipa_target_country_routes_to_manual_review(self):
+        merged_input = build_merged_input_from_request(
+            pack_id="korea_pipa",
+            aws_data={
+                "current_region": "ap-northeast-2",
+                "encryption_at_rest": True,
+                "encryption_in_transit": True,
+                "access_control_in_place": True,
+                "data_type": "customer_profiles",
+                "contains_sensitive_data": False,
+                "has_unique_identifier": False,
+                "uses_resident_registration_number": False,
+                "uses_processor": False,
+                "is_automated_decision_only": False,
+            },
+            policy_data={
+                "dataset_name": "kr-unknown-region",
+                "target_region": "unknown-region",
+                "lawful_basis": "contract",
+            },
+        )
+
+        result = evaluate_rules(merged_input, load_pack("korea_pipa"))
+
+        self.assertFalse(merged_input["target_country_known"])
+        self.assertEqual(result["final_decision"], "manual_review")
+        self.assertIn("common-target-country-unknown-review", [
+            rule["rule_id"] for rule in result["triggered_rules"]
+        ])
+
+    def test_demo_scenario_expected_decisions_match_actual_decisions(self):
+        scenarios = load_json_file(get_sample_input_path() / "demo_scenarios.json")[
+            "scenarios"
+        ]
+
+        for scenario in scenarios:
+            with self.subTest(scenario=scenario["scenario_id"]):
+                merged_input = build_merged_input_from_request(
+                    pack_id="gdpr",
+                    aws_data=scenario["aws_data"],
+                    policy_data=scenario["policy_data"],
+                )
+                result = evaluate_rules(merged_input, load_pack("gdpr"))
+                self.assertEqual(
+                    result["final_decision"],
+                    scenario["expected_decision"],
+                )
 
 
 if __name__ == "__main__":

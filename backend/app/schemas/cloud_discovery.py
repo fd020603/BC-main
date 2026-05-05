@@ -1,6 +1,6 @@
 from typing import Any, Dict, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.services.cloud_discovery.types import EvidenceItem, Provider
 
@@ -45,7 +45,20 @@ class CloudDiscoveryResponse(BaseModel):
     provider: Provider
     resource_type: str
     resource_id: str
+    normalized_cloud_data: Dict[str, Any]
     normalized_aws_data: Dict[str, Any]
     evidence: list[EvidenceItem]
     warnings: list[str] = []
     raw_discovery: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_normalized_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            cloud_data = data.get("normalized_cloud_data")
+            aws_data = data.get("normalized_aws_data")
+            if cloud_data is None and aws_data is not None:
+                data["normalized_cloud_data"] = aws_data
+            if aws_data is None and cloud_data is not None:
+                data["normalized_aws_data"] = cloud_data
+        return data

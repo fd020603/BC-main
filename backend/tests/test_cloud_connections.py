@@ -59,10 +59,17 @@ class FakeS3Client:
 class CloudConnectionTests(unittest.TestCase):
     def test_aws_connection_start_returns_external_id_and_console_url(self):
         client = TestClient(app)
-        response = client.post(
-            "/api/v1/cloud-connections/aws/start",
-            json={"connection_name": "demo", "region": "ap-northeast-2"},
-        )
+        with patch(
+            "app.api.cloud_connections.create_aws_connection",
+            return_value={
+                "connection_id": "conn-test",
+                "external_id": "external-test",
+            },
+        ):
+            response = client.post(
+                "/api/v1/cloud-connections/aws/start",
+                json={"connection_name": "demo", "region": "ap-northeast-2"},
+            )
 
         self.assertEqual(response.status_code, 200)
         body = response.json()

@@ -1,6 +1,6 @@
 from typing import Any, Dict, Literal, Optional
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, model_validator
 
 
 class AwsConnectionStartRequest(BaseModel):
@@ -64,8 +64,21 @@ class AwsS3CheckResponse(BaseModel):
     provider: Literal["aws"] = "aws"
     resource_type: Literal["s3_bucket"] = "s3_bucket"
     resource_id: str
+    normalized_cloud_data: Dict[str, Any]
     normalized_aws_data: Dict[str, Any]
     missing_items: list[str] = []
     warnings: list[str] = []
     evidence: list[Dict[str, Any]] = []
     raw_discovery: Dict[str, Any] = {}
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_normalized_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            cloud_data = data.get("normalized_cloud_data")
+            aws_data = data.get("normalized_aws_data")
+            if cloud_data is None and aws_data is not None:
+                data["normalized_cloud_data"] = aws_data
+            if aws_data is None and cloud_data is not None:
+                data["normalized_aws_data"] = cloud_data
+        return data

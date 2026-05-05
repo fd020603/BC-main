@@ -53,6 +53,7 @@ export type CloudDiscoveryResponse = {
   provider: "aws" | "azure";
   resource_type: string;
   resource_id: string;
+  normalized_cloud_data: JsonObject;
   normalized_aws_data: JsonObject;
   evidence: CloudEvidenceItem[];
   warnings: string[];
@@ -76,6 +77,7 @@ export type AwsS3CheckResponse = {
   provider: "aws";
   resource_type: "s3_bucket";
   resource_id: string;
+  normalized_cloud_data: JsonObject;
   normalized_aws_data: JsonObject;
   missing_items: string[];
   warnings: string[];

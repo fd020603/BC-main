@@ -7,7 +7,7 @@ from app.services.cloud_discovery.normalizer import normalize_cloud_discovery
 
 
 class CloudDiscoveryTests(unittest.TestCase):
-    def test_aws_mock_discovery_normalizes_to_aws_data(self):
+    def test_aws_mock_discovery_normalizes_to_cloud_data(self):
         result = normalize_cloud_discovery(
             provider="aws",
             resource_type="s3_bucket",
@@ -26,21 +26,19 @@ class CloudDiscoveryTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual(
-            result.normalized_aws_data,
-            {
-                "current_region": "ap-northeast-2",
-                "encryption_at_rest": True,
-                "encryption_in_transit": True,
-                "access_control_in_place": True,
-                "contains_sensitive_data": None,
-                "data_type": "customer_records",
-                "uses_processor": None,
-            },
-        )
+        self.assertEqual(result.normalized_cloud_data, result.normalized_aws_data)
+        self.assertEqual(result.normalized_cloud_data["current_region"], "ap-northeast-2")
+        self.assertTrue(result.normalized_cloud_data["encryption_at_rest"])
+        self.assertTrue(result.normalized_cloud_data["encryption_at_rest_effective"])
+        self.assertTrue(result.normalized_cloud_data["bucket_default_encryption_configured"])
+        self.assertTrue(result.normalized_cloud_data["encryption_in_transit"])
+        self.assertTrue(result.normalized_cloud_data["access_control_in_place"])
+        self.assertIsNone(result.normalized_cloud_data["contains_sensitive_data"])
+        self.assertEqual(result.normalized_cloud_data["data_type"], "customer_records")
+        self.assertIsNone(result.normalized_cloud_data["uses_processor"])
         self.assertTrue(result.warnings)
 
-    def test_azure_mock_discovery_normalizes_to_aws_data_shape(self):
+    def test_azure_mock_discovery_normalizes_to_cloud_data_shape(self):
         result = normalize_cloud_discovery(
             provider="azure",
             resource_type="storage_account",
@@ -55,11 +53,11 @@ class CloudDiscoveryTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual(result.normalized_aws_data["current_region"], "koreacentral")
-        self.assertTrue(result.normalized_aws_data["encryption_at_rest"])
-        self.assertTrue(result.normalized_aws_data["encryption_in_transit"])
-        self.assertTrue(result.normalized_aws_data["access_control_in_place"])
-        self.assertEqual(result.normalized_aws_data["data_type"], "customer_records")
+        self.assertEqual(result.normalized_cloud_data["current_region"], "koreacentral")
+        self.assertTrue(result.normalized_cloud_data["encryption_at_rest"])
+        self.assertTrue(result.normalized_cloud_data["encryption_in_transit"])
+        self.assertTrue(result.normalized_cloud_data["access_control_in_place"])
+        self.assertEqual(result.normalized_cloud_data["data_type"], "customer_records")
 
     def test_unconfirmed_sensitive_data_stays_null_with_warning(self):
         result = normalize_cloud_discovery(
@@ -69,7 +67,7 @@ class CloudDiscoveryTests(unittest.TestCase):
             raw_discovery={"region": "eu-central-1"},
         )
 
-        self.assertIsNone(result.normalized_aws_data["contains_sensitive_data"])
+        self.assertIsNone(result.normalized_cloud_data["contains_sensitive_data"])
         self.assertIn("contains_sensitive_data", result.warnings[0])
         evidence = [
             item for item in result.evidence if item.field == "contains_sensitive_data"
@@ -127,6 +125,10 @@ class CloudDiscoveryTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body["provider"], "aws")
+        self.assertEqual(
+            body["normalized_cloud_data"]["current_region"],
+            "ap-northeast-2",
+        )
         self.assertEqual(
             body["normalized_aws_data"]["current_region"],
             "ap-northeast-2",

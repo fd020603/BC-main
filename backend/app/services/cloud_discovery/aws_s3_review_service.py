@@ -131,20 +131,33 @@ def collect_s3_discovery_with_client(s3, bucket_name: str) -> Dict[str, Any]:
         raise RuntimeError(_aws_s3_error_message(exc, "S3 버킷 위치 조회")) from exc
     discovered["region"] = location.get("LocationConstraint") or "us-east-1"
 
-    encryption = _safe_read(
-        discovered,
-        "S3 암호화 설정",
-        None,
-        s3.get_bucket_encryption,
-        Bucket=bucket_name,
-    )
-    if encryption is not None:
+    try:
+        encryption = s3.get_bucket_encryption(Bucket=bucket_name)
         rules = encryption.get("ServerSideEncryptionConfiguration", {}).get(
             "Rules", []
         )
         discovered["encryption"]["default_sse_enabled"] = bool(rules)
-    else:
-        discovered["encryption"]["default_sse_enabled"] = False
+        discovered["encryption"]["kms_enabled"] = any(
+            rule.get("ApplyServerSideEncryptionByDefault", {}).get("SSEAlgorithm")
+            == "aws:kms"
+            for rule in rules
+        )
+        discovered["encryption"]["effective"] = True
+        discovered["encryption"]["source"] = (
+            "bucket_default_encryption_config"
+            if rules
+            else "aws_s3_baseline_sse_s3"
+        )
+    except Exception as exc:
+        if _client_error_code(exc) == "ServerSideEncryptionConfigurationNotFoundError":
+            discovered["encryption"]["default_sse_enabled"] = False
+            discovered["encryption"]["kms_enabled"] = False
+            discovered["encryption"]["effective"] = True
+            discovered["encryption"]["source"] = "aws_s3_baseline_sse_s3"
+        else:
+            discovered.setdefault("_read_warnings", []).append(
+                _read_warning("S3 암호화 설정", exc)
+            )
 
     public_access = _safe_read(
         discovered,
@@ -234,7 +247,7 @@ def check_s3_bucket_with_client(
         resource_id=bucket_name,
         raw_discovery=raw,
     )
-    normalized_data = normalized.normalized_aws_data
+    normalized_data = normalized.normalized_cloud_data
     warnings = [
         *normalized.warnings,
         *raw.get("_read_warnings", []),
@@ -245,6 +258,7 @@ def check_s3_bucket_with_client(
         "provider": "aws",
         "resource_type": "s3_bucket",
         "resource_id": bucket_name,
+        "normalized_cloud_data": normalized_data,
         "normalized_aws_data": normalized_data,
         "missing_items": _missing_items(normalized_data),
         "warnings": list(dict.fromkeys(warnings)),

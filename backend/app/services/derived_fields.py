@@ -13,10 +13,23 @@ def derive_target_country(target_region: str | None) -> str | None:
     return AWS_REGION_TO_COUNTRY.get(target_region)
 
 
-def derive_adequacy_decision_exists(target_country: str | None) -> bool:
+def derive_eu_adequacy_decision_exists(
+    target_country: str | None,
+    merged_data: Dict[str, Any] | None = None,
+) -> bool:
     if not target_country:
         return False
+    if (
+        target_country == "US"
+        and merged_data
+        and merged_data.get("recipient_us_dpf_certified") is True
+    ):
+        return True
     return target_country in EU_ADEQUACY_COUNTRIES or target_country in EU_EEA_COUNTRIES
+
+
+def derive_adequacy_decision_exists(target_country: str | None) -> bool:
+    return derive_eu_adequacy_decision_exists(target_country)
 
 
 def derive_is_third_country_transfer(
@@ -90,9 +103,9 @@ def derive_saudi_transfer_risk_assessment_required(
 def derive_transfer_outside_country(
     target_country: str | None,
     country_code: str,
-) -> bool:
+) -> bool | None:
     if not target_country:
-        return False
+        return None
     return target_country != country_code
 
 
@@ -130,6 +143,9 @@ def derive_pipa_transfer_basis_available(merged_data: Dict[str, Any]) -> bool:
             "treaty_or_statutory_transfer_basis",
             "contract_necessity_disclosed_or_notified",
             "pipa_certified_recipient",
+            "pipa_equivalence_recognition_exists",
+            # Backward-compatible alias for saved/demo inputs created before the
+            # PIPA equivalence concept was split from EU GDPR adequacy.
             "adequacy_decision_exists",
         )
     )
@@ -154,7 +170,10 @@ def build_gdpr_derived_fields(merged_data: Dict[str, Any]) -> Dict[str, Any]:
     data_subject_region = merged_data.get("data_subject_region")
 
     target_country = derive_target_country(target_region)
-    adequacy_decision_exists = derive_adequacy_decision_exists(target_country)
+    adequacy_decision_exists = derive_eu_adequacy_decision_exists(
+        target_country,
+        merged_data,
+    )
     is_third_country_transfer = derive_is_third_country_transfer(
         data_subject_region=data_subject_region,
         target_country=target_country,
@@ -168,6 +187,17 @@ def build_gdpr_derived_fields(merged_data: Dict[str, Any]) -> Dict[str, Any]:
         "target_country": target_country,
         "target_country_known": target_country is not None,
         "adequacy_decision_exists": adequacy_decision_exists,
+        "eu_adequacy_decision_exists": adequacy_decision_exists,
+        "adequacy_scope_confirmed": (
+            merged_data.get("recipient_us_dpf_certified") is True
+            if target_country == "US"
+            else adequacy_decision_exists
+        ),
+        "adequacy_decision_country_only": (
+            target_country is not None
+            and target_country != "US"
+            and adequacy_decision_exists
+        ),
         "is_third_country_transfer": is_third_country_transfer,
         "transfer_safeguards_available": transfer_safeguards_available,
         "baseline_security_controls_ready": baseline_security_controls_ready,
@@ -278,10 +308,10 @@ def build_derived_fields(
     if schema_id.startswith("saudi_pdpl"):
         return build_saudi_pdpl_derived_fields(merged_data)
 
-    if schema_id.startswith("taiwan_pdpa"):
+    if schema_id.startswith(("taiwan", "taiwan_pdpa")):
         return build_taiwan_pdpa_derived_fields(merged_data)
 
-    if schema_id.startswith("brazil_lgpd"):
+    if schema_id.startswith(("lgpd", "brazil_lgpd")):
         return build_lgpd_derived_fields(merged_data)
 
     if schema_id.startswith("pipa"):

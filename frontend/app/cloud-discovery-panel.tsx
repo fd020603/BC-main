@@ -9,6 +9,10 @@ import { ActionButton, ErrorBanner, TextList } from "./workspace-ui";
 type Provider = "aws" | "azure";
 type DiscoveryMode = "live" | "mock";
 
+function getNormalizedCloudData(result: CloudDiscoveryResponse) {
+  return result.normalized_cloud_data ?? result.normalized_aws_data;
+}
+
 function boolToState(value: unknown) {
   if (value === true) {
     return "true";
@@ -41,6 +45,8 @@ export function applyCloudDataToFormState(
     "access_control_in_place",
     "contains_sensitive_data",
     "uses_processor",
+    "contains_article6_sensitive_data",
+    "uses_commissioned_processor",
   ]) {
     if (field in normalized && normalized[field] !== null) {
       next[field] = boolToState(normalized[field]);
@@ -93,7 +99,7 @@ export function CloudDiscoveryPanel({
         }),
       });
       setResult(response);
-      onApply(response.normalized_aws_data);
+      onApply(getNormalizedCloudData(response));
     } catch (error) {
       setErrorMessage(buildErrorMessage(error));
     } finally {
@@ -213,7 +219,7 @@ export function CloudDiscoveryPanel({
         {result ? (
           <ActionButton
             label="정규화 값 다시 반영"
-            onClick={() => onApply(result.normalized_aws_data)}
+            onClick={() => onApply(getNormalizedCloudData(result))}
             variant="secondary"
           />
         ) : null}
@@ -225,10 +231,10 @@ export function CloudDiscoveryPanel({
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-[var(--color-line)] bg-white p-4">
             <p className="text-sm font-semibold text-[var(--color-ink)]">
-              normalized_aws_data
+              normalized_cloud_data
             </p>
             <pre className="code-block mt-3 max-h-64 overflow-auto rounded-lg p-3 text-xs leading-5">
-              {formatJson(result.normalized_aws_data)}
+              {formatJson(getNormalizedCloudData(result))}
             </pre>
           </div>
           <div className="space-y-4">

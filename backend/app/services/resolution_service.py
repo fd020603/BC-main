@@ -6,7 +6,7 @@ def resolve_final_decision(
     decision_order: List[str],
 ) -> str:
     if not triggered_rules:
-        return "allow"
+        return "manual_review"
 
     decisions = [rule["decision"] for rule in triggered_rules]
 

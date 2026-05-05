@@ -90,6 +90,31 @@
   ],
   "rules": [
     {
+      "rule_id": "common-target-country-unknown-review",
+      "article": "PIPA Art. 28-8",
+      "title": "대상 국가 식별 불가",
+      "category": "cross_border_transfer",
+      "priority": 95,
+      "decision": "manual_review",
+      "when": {
+        "field": "target_country_known",
+        "eq": false
+      },
+      "required_evidence": [
+        "대상 리전과 실제 저장 또는 접근 국가 매핑 자료"
+      ],
+      "required_actions": [
+        "대상 리전이 어느 국가에 해당하는지 확인하고 국외이전 여부와 적용 경로를 다시 검토하세요."
+      ],
+      "message": "대상 국가를 식별할 수 없어 PIPA 국외이전 여부와 허용 경로를 확정할 수 없습니다.",
+      "references": [
+        "PIPA Art. 28-8"
+      ],
+      "reviewer_notes": [
+        "알 수 없는 클라우드 리전이나 사용자 정의 리전은 자동 허용하지 말고 수동 검토로 처리하세요."
+      ]
+    },
+    {
       "rule_id": "pipa-art-15-lawful-basis-missing",
       "article": 15,
       "title": "수집ㆍ이용 적법근거 미확인",
@@ -1060,7 +1085,7 @@
                 "eq": true
               },
               {
-                "field": "adequacy_decision_exists",
+                "field": "pipa_equivalence_recognition_exists",
                 "eq": true
               },
               {

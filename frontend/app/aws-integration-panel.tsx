@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { buildErrorMessage, fetchJson, formatJson } from "./workspace-runtime";
 import type {
   AwsConnectionCompleteResponse,
@@ -54,14 +56,12 @@ function formatCheckedAt(value: string | null) {
   }).format(new Date(value));
 }
 
-function ResultCards({
-  result,
-  onApply,
-}: {
-  result: AwsS3CheckResponse;
-  onApply: (normalized: JsonObject) => void;
-}) {
-  const normalized = result.normalized_aws_data;
+function getNormalizedCloudData(result: AwsS3CheckResponse) {
+  return result.normalized_cloud_data ?? result.normalized_aws_data;
+}
+
+function ResultCards({ result }: { result: AwsS3CheckResponse }) {
+  const normalized = getNormalizedCloudData(result);
   const rows = [
     ["current_region", normalized.current_region],
     ["encryption_at_rest", normalized.encryption_at_rest],
@@ -127,16 +127,14 @@ function ResultCards({
       <div className="rounded-lg border border-[var(--color-line)] bg-white p-4 lg:col-span-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-semibold text-[var(--color-ink)]">
-            normalized_aws_data
+            normalized_cloud_data
           </p>
-          <ActionButton
-            label="평가 입력값으로 반영"
-            onClick={() => onApply(result.normalized_aws_data)}
-            variant="secondary"
-          />
+          <span className="rounded-full bg-[var(--color-success-soft)] px-3 py-1 text-xs font-semibold text-[var(--color-success)]">
+            이미 평가 입력값에 반영됨
+          </span>
         </div>
         <pre className="code-block mt-3 max-h-64 overflow-auto rounded-lg p-3 text-xs leading-5">
-          {formatJson(result.normalized_aws_data)}
+          {formatJson(normalized)}
         </pre>
       </div>
     </div>
@@ -151,6 +149,8 @@ export function AwsIntegrationPanel({
   onClearAppliedValues?: () => void;
 }) {
   const aws = useAwsIntegration();
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
+  const [isApplyPreviewOpen, setIsApplyPreviewOpen] = useState(false);
   const connectionId = aws.startResult?.connection_id;
   const roleConnected = aws.connectionResult?.status === "connected";
 
@@ -171,21 +171,24 @@ export function AwsIntegrationPanel({
     mode: "access_key" | "iam_role",
     bucketName: string,
   ) {
+    const normalized = getNormalizedCloudData(result);
     aws.setLastCheckResult(result);
-    aws.setDiscoveredValues(result.normalized_aws_data);
+    aws.setDiscoveredValues(normalized);
     aws.setMissingItems(result.missing_items);
     aws.setWarnings(result.warnings);
     aws.setBucketName(bucketName);
-    aws.setRegion(String(result.normalized_aws_data.current_region ?? ""));
+    aws.setRegion(String(normalized.current_region ?? ""));
     aws.setConnectionMode(mode);
     aws.setIsAwsConnected(true);
     aws.setLastCheckedAt(new Date().toISOString());
     aws.setIsPanelOpen(false);
-    onApply(result.normalized_aws_data);
+    onApply(normalized);
   }
 
   function knownTagPayload() {
-    const normalized = aws.lastCheckResult?.normalized_aws_data;
+    const normalized = aws.lastCheckResult
+      ? getNormalizedCloudData(aws.lastCheckResult)
+      : undefined;
     return {
       data_type:
         typeof normalized?.data_type === "string" && normalized.data_type
@@ -323,18 +326,15 @@ export function AwsIntegrationPanel({
     updateFromResult(response, "iam_role", aws.bucketName.trim());
   }
 
-  function clearKeyInputs() {
-    const choice = window.prompt(
-      "키 입력값과 AWS 연동 상태를 지웁니다. 이미 평가 입력값에 반영된 항목도 초기화할까요?\n\n1: 연동 정보만 지우기\n2: 연동 정보와 반영된 평가값 모두 지우기\n3: 취소",
-      "1",
-    );
-    if (choice === "3" || choice === null) {
-      return;
-    }
-    if (choice === "2") {
-      onClearAppliedValues?.();
-    }
+  function clearAwsOnly() {
     aws.resetAwsIntegration();
+    setIsClearDialogOpen(false);
+  }
+
+  function clearAwsAndAppliedValues() {
+    onClearAppliedValues?.();
+    aws.resetAwsIntegration();
+    setIsClearDialogOpen(false);
   }
 
   async function rerunCheck() {
@@ -356,6 +356,84 @@ export function AwsIntegrationPanel({
       await applyWithRole();
     }
   }
+
+  async function confirmApplyRecommendedSettings() {
+    setIsApplyPreviewOpen(false);
+    await withAction("apply", applyRecommendedSettings);
+  }
+
+  const clearDialog = isClearDialogOpen ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+      <div className="w-full max-w-md rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-xl">
+        <h3 className="text-lg font-semibold text-[var(--color-ink)]">
+          AWS 연동 정보 지우기
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+          Access Key와 현재 AWS 연동 상태를 지웁니다. 이미 평가 입력값에 반영된 AWS 수집값도 함께 초기화할 수 있습니다.
+        </p>
+        <div className="mt-5 grid gap-2">
+          <button
+            type="button"
+            onClick={clearAwsOnly}
+            className="rounded-lg border border-[var(--color-line)] px-4 py-3 text-left text-sm font-semibold text-[var(--color-ink)] hover:border-[var(--color-line-strong)]"
+          >
+            연동 정보만 지우기
+          </button>
+          <button
+            type="button"
+            onClick={clearAwsAndAppliedValues}
+            className="rounded-lg border border-[var(--color-warning)] bg-[var(--color-warning-soft)] px-4 py-3 text-left text-sm font-semibold text-[var(--color-warning)]"
+          >
+            연동 정보와 반영된 평가값 모두 지우기
+          </button>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setIsClearDialogOpen(false)}
+            className="rounded-lg border border-[var(--color-line)] px-4 py-2 text-sm font-semibold text-[var(--color-muted)]"
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const applyPreviewDialog = isApplyPreviewOpen ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+      <div className="w-full max-w-lg rounded-lg border border-[var(--color-line)] bg-white p-5 shadow-xl">
+        <h3 className="text-lg font-semibold text-[var(--color-ink)]">
+          권장 설정 적용 미리보기
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--color-muted)]">
+          아래 항목을 기준으로 S3 버킷 설정을 변경합니다. 버킷 암호화, Public Access Block, HTTPS 전송 정책, 기존에 확인된 태그 값이 적용 대상입니다.
+        </p>
+        <TextList
+          title="변경 또는 확인 예정 항목"
+          items={
+            aws.missingItems.length > 0
+              ? aws.missingItems
+              : ["권장 보안 설정 재확인"]
+          }
+          compact
+        />
+        <div className="mt-5 flex flex-wrap justify-end gap-3">
+          <ActionButton
+            label="취소"
+            onClick={() => setIsApplyPreviewOpen(false)}
+            variant="secondary"
+          />
+          <ActionButton
+            label="선택한 설정 적용"
+            onClick={() => void confirmApplyRecommendedSettings()}
+            active={aws.activeAction === "apply"}
+            disabled={aws.activeAction !== null}
+          />
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   if (!aws.isPanelOpen) {
     return (
@@ -401,8 +479,8 @@ export function AwsIntegrationPanel({
                   variant="secondary"
                 />
                 <ActionButton
-                  label="부족한 설정 자동 적용"
-                  onClick={() => void withAction("apply", applyRecommendedSettings)}
+                  label="권장 설정 적용 미리보기"
+                  onClick={() => setIsApplyPreviewOpen(true)}
                   active={aws.activeAction === "apply"}
                   disabled={aws.activeAction !== null}
                   variant="secondary"
@@ -414,7 +492,7 @@ export function AwsIntegrationPanel({
                 />
                 <ActionButton
                   label="키 입력값 지우기"
-                  onClick={clearKeyInputs}
+                  onClick={() => setIsClearDialogOpen(true)}
                   disabled={aws.activeAction !== null}
                   variant="secondary"
                 />
@@ -428,6 +506,8 @@ export function AwsIntegrationPanel({
           </div>
         </div>
         {aws.errorMessage ? <ErrorBanner message={aws.errorMessage} /> : null}
+        {clearDialog}
+        {applyPreviewDialog}
       </section>
     );
   }
@@ -518,15 +598,15 @@ export function AwsIntegrationPanel({
               disabled={aws.activeAction !== null}
             />
             <ActionButton
-              label="부족한 설정 자동 적용"
-              onClick={() => void withAction("apply-keys", applyWithKeys)}
-              active={aws.activeAction === "apply-keys"}
+              label="권장 설정 적용 미리보기"
+              onClick={() => setIsApplyPreviewOpen(true)}
+              active={aws.activeAction === "apply"}
               disabled={aws.activeAction !== null}
               variant="secondary"
             />
             <ActionButton
               label="키 입력값 지우기"
-              onClick={clearKeyInputs}
+              onClick={() => setIsClearDialogOpen(true)}
               disabled={aws.activeAction !== null}
               variant="secondary"
             />
@@ -616,9 +696,9 @@ export function AwsIntegrationPanel({
                 disabled={aws.activeAction !== null}
               />
               <ActionButton
-                label="부족한 설정 자동 적용"
-                onClick={() => void withAction("apply-role", applyWithRole)}
-                active={aws.activeAction === "apply-role"}
+                label="권장 설정 적용 미리보기"
+                onClick={() => setIsApplyPreviewOpen(true)}
+                active={aws.activeAction === "apply"}
                 disabled={aws.activeAction !== null}
                 variant="secondary"
               />
@@ -635,8 +715,10 @@ export function AwsIntegrationPanel({
 
       {aws.errorMessage ? <ErrorBanner message={aws.errorMessage} /> : null}
       {aws.lastCheckResult ? (
-        <ResultCards result={aws.lastCheckResult} onApply={onApply} />
+        <ResultCards result={aws.lastCheckResult} />
       ) : null}
+      {clearDialog}
+      {applyPreviewDialog}
     </section>
   );
 }

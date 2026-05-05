@@ -1,5 +1,5 @@
 {
-  "schema_id": "taiwan_pdpa_input_schema_v1",
+  "schema_id": "taiwan_input_schema_v1",
   "schema_name": "Taiwan PDPA Privacy and Cross-Border Review Input Schema",
   "version": "1.0.0",
   "description": "Hybrid input schema for policy-based review of Taiwan PDPA collection, processing, use, sensitive personal data, data subject rights, marketing, commissioned processing, security maintenance, breach notification, and cross-border transfer restriction scenarios.",

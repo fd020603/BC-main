@@ -410,7 +410,7 @@ function hasPipaTransferBasis(state: GuidedFormState) {
     || state.treaty_or_statutory_transfer_basis === "true"
     || state.contract_necessity_disclosed_or_notified === "true"
     || state.pipa_certified_recipient === "true"
-    || state.adequacy_decision_exists === "true"
+    || state.pipa_equivalence_recognition_exists === "true"
   );
 }
 
@@ -868,7 +868,7 @@ const pipaDefaultState: GuidedFormState = {
   treaty_or_statutory_transfer_basis: "unknown",
   contract_necessity_disclosed_or_notified: "unknown",
   pipa_certified_recipient: "unknown",
-  adequacy_decision_exists: "unknown",
+  pipa_equivalence_recognition_exists: "unknown",
   cross_border_notice_provided: "unknown",
   transfer_protection_measures_ready: "unknown",
   onward_transfer_controls: "unknown",
@@ -1015,7 +1015,7 @@ const pipaSteps = [
       { key: "contract_necessity_disclosed_or_notified", label: "계약 이행상 위탁·보관 필요 및 공개/통지", helper: "계약 이행상 필요한 위탁·보관이고 처리방침 공개 또는 통지가 되었는지 확인합니다.", kind: "segmented", options: yesNoUnknownOptions, visibleIf: isPipaCrossBorderContext },
       { key: "treaty_or_statutory_transfer_basis", label: "법률·조약·국제협정 근거", helper: "법률, 조약, 국제협정상 국외이전 근거가 있는지 확인합니다.", kind: "segmented", options: yesNoUnknownOptions, visibleIf: isPipaCrossBorderContext },
       { key: "pipa_certified_recipient", label: "인증받은 수령자", helper: "보호위원회 지정 인증 등을 받은 수령자인지 확인합니다.", kind: "segmented", options: yesNoUnknownOptions, visibleIf: isPipaCrossBorderContext },
-      { key: "adequacy_decision_exists", label: "동등 보호수준 인정", helper: "보호위원회가 동등한 보호수준을 인정한 국가 또는 기관인지 확인합니다.", kind: "segmented", options: yesNoUnknownOptions, visibleIf: isPipaCrossBorderContext },
+      { key: "pipa_equivalence_recognition_exists", label: "동등 보호수준 인정", helper: "보호위원회가 동등한 보호수준을 인정한 국가 또는 기관인지 확인합니다.", kind: "segmented", options: yesNoUnknownOptions, visibleIf: isPipaCrossBorderContext },
       { key: "cross_border_notice_provided", label: "국외이전 고지 항목 제공", helper: "이전 항목, 국가, 시기, 방법, 수령자, 목적, 보유기간, 거부 방법 등을 고지했는지 확인합니다.", kind: "segmented", options: yesNoUnknownOptions, visibleIf: isPipaCrossBorderContext },
       { key: "transfer_protection_measures_ready", label: "국외이전 보호조치 준비", helper: "국외 수령자의 보호조치와 권리보장 절차가 준비되어 있는지 확인합니다.", kind: "segmented", options: yesNoUnknownOptions, visibleIf: isPipaCrossBorderContext },
       { key: "onward_transfer_controls", label: "제3국 재이전 통제", helper: "국외 수령자가 다시 제3국으로 이전하는 경우를 통제하는지 확인합니다.", kind: "segmented", options: yesNoUnknownOptions, visibleIf: isPipaCrossBorderContext },
@@ -1654,7 +1654,7 @@ export const PACK_UI_DEFINITIONS: Record<string, PackUiDefinition> = {
           treaty_or_statutory_transfer_basis: crossBorder ? toNullableBoolean(state.treaty_or_statutory_transfer_basis) : false,
           contract_necessity_disclosed_or_notified: crossBorder ? toNullableBoolean(state.contract_necessity_disclosed_or_notified) : false,
           pipa_certified_recipient: crossBorder ? toNullableBoolean(state.pipa_certified_recipient) : false,
-          adequacy_decision_exists: crossBorder ? toNullableBoolean(state.adequacy_decision_exists) : false,
+          pipa_equivalence_recognition_exists: crossBorder ? toNullableBoolean(state.pipa_equivalence_recognition_exists) : false,
           cross_border_notice_provided: crossBorder ? toNullableBoolean(state.cross_border_notice_provided) : null,
           transfer_protection_measures_ready: crossBorder ? toNullableBoolean(state.transfer_protection_measures_ready) : null,
           onward_transfer_controls: crossBorder ? toNullableBoolean(state.onward_transfer_controls) : null,

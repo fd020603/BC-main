@@ -42,6 +42,13 @@ const CLOUD_DISCOVERY_FIELD_KEYS = [
   "uses_processor",
 ] as const;
 
+const CLOUD_TO_PACK_FIELD_MAP: Record<string, Record<string, string>> = {
+  taiwan: {
+    contains_sensitive_data: "contains_article6_sensitive_data",
+    uses_processor: "uses_commissioned_processor",
+  },
+};
+
 type ScreenMode = "intro" | "step" | "review" | "result";
 
 function renderField(
@@ -112,10 +119,36 @@ function isKnownCloudValue(value: unknown) {
   return value !== null && value !== undefined && value !== "";
 }
 
-function getCloudAppliedFieldKeys(normalized: JsonObject) {
-  return CLOUD_DISCOVERY_FIELD_KEYS.filter((field) =>
-    isKnownCloudValue(normalized[field]),
-  );
+function mapCloudDataForPack(packId: string, normalized: JsonObject) {
+  const mapped: JsonObject = { ...normalized };
+  const fieldMap = CLOUD_TO_PACK_FIELD_MAP[packId] ?? {};
+
+  for (const [cloudField, packField] of Object.entries(fieldMap)) {
+    if (isKnownCloudValue(normalized[cloudField])) {
+      mapped[packField] = normalized[cloudField];
+    }
+  }
+
+  return mapped;
+}
+
+function getCloudAppliedFieldKeysForPack(packId: string, normalized: JsonObject) {
+  const fields = new Set<string>();
+  const mapped = mapCloudDataForPack(packId, normalized);
+
+  for (const field of CLOUD_DISCOVERY_FIELD_KEYS) {
+    if (isKnownCloudValue(normalized[field])) {
+      fields.add(CLOUD_TO_PACK_FIELD_MAP[packId]?.[field] ?? field);
+    }
+  }
+
+  for (const field of Object.values(CLOUD_TO_PACK_FIELD_MAP[packId] ?? {})) {
+    if (isKnownCloudValue(mapped[field])) {
+      fields.add(field);
+    }
+  }
+
+  return Array.from(fields);
 }
 
 function fieldLabelForKey(definition: PackUiDefinition, key: string) {
@@ -446,6 +479,9 @@ export function GuidedSingleFlowPage() {
       for (const key of CLOUD_DISCOVERY_FIELD_KEYS) {
         next[key] = packDefinition.defaultState[key] ?? "";
       }
+      for (const key of Object.values(CLOUD_TO_PACK_FIELD_MAP[selectedPackId] ?? {})) {
+        next[key] = packDefinition.defaultState[key] ?? "";
+      }
       return next;
     });
   }
@@ -715,10 +751,13 @@ export function GuidedSingleFlowPage() {
                 <AwsIntegrationPanel
                   onClearAppliedValues={clearAwsAppliedFormValues}
                   onApply={(normalized) => {
+                    const mapped = mapCloudDataForPack(selectedPackId, normalized);
                     setFormState((current) =>
-                      applyCloudDataToFormState(current, normalized),
+                      applyCloudDataToFormState(current, mapped),
                     );
-                    setCloudAppliedFields(getCloudAppliedFieldKeys(normalized));
+                    setCloudAppliedFields(
+                      getCloudAppliedFieldKeysForPack(selectedPackId, normalized),
+                    );
                     setStatusMessage(
                       "클라우드에서 확인 가능한 기술 입력값을 현재 폼에 반영했습니다. 법적 판단 항목은 변경하지 않았습니다.",
                     );

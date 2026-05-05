@@ -331,7 +331,7 @@
         "description": "Whether the recipient has a PIPC-designated privacy certification and required measures are taken.",
         "example": false
       },
-      "adequacy_decision_exists": {
+      "pipa_equivalence_recognition_exists": {
         "type": [
           "boolean",
           "null"

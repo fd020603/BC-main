@@ -81,6 +81,31 @@
   ],
   "rules": [
     {
+      "rule_id": "gdpr-uk-scope-manual-review",
+      "article": "UK GDPR scope note",
+      "title": "UK GDPR requires separate scope review",
+      "category": "scope",
+      "priority": 96,
+      "decision": "manual_review",
+      "when": {
+        "field": "data_subject_region",
+        "eq": "UK"
+      },
+      "required_evidence": [
+        "UK GDPR 적용 여부와 이전 메커니즘 검토 자료"
+      ],
+      "required_actions": [
+        "현재 GDPR pack은 EU/EEA GDPR 중심입니다. UK GDPR 적용 여부는 별도 pack 또는 법무 검토로 확인하세요."
+      ],
+      "message": "정보주체 범위가 UK로 표시되어 EU/EEA GDPR 자동 경로만으로 판단할 수 없습니다.",
+      "references": [
+        "UK GDPR should be reviewed separately from EU GDPR."
+      ],
+      "reviewer_notes": [
+        "발표 범위에서는 UK GDPR을 별도 확장 영역으로 설명하세요."
+      ]
+    },
+    {
       "rule_id": "gdpr-art-6-lawful-basis-missing",
       "article": "GDPR Art. 6",
       "title": "Lawful basis missing",

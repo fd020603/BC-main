@@ -27,18 +27,22 @@
         "controller_processor_roles_defined": true,
         "dpa_in_place": true,
         "processor_sufficient_guarantees": true,
+        "subprocessor_controls_in_place": true,
         "scc_in_place": false,
         "bcr_in_place": false,
         "other_safeguards_in_place": false,
         "transfer_impact_assessment_completed": null,
         "supplemental_measures_documented": null,
         "incident_response_in_place": true,
+        "breach_notification_ready_72h": true,
         "derogation_used": false,
         "derogation_type": null,
         "privacy_notice_updated": true,
         "transfer_disclosed_to_subject": true,
         "records_of_processing_exists": true,
-        "transfer_documented_in_ropa": true
+        "transfer_documented_in_ropa": true,
+        "data_subject_rights_process_ready": true,
+        "privacy_by_design_review_completed": true
       }
     },
     {
@@ -68,18 +72,22 @@
         "controller_processor_roles_defined": true,
         "dpa_in_place": true,
         "processor_sufficient_guarantees": true,
+        "subprocessor_controls_in_place": true,
         "scc_in_place": true,
         "bcr_in_place": false,
         "other_safeguards_in_place": false,
         "transfer_impact_assessment_completed": true,
         "supplemental_measures_documented": true,
         "incident_response_in_place": true,
+        "breach_notification_ready_72h": true,
         "derogation_used": false,
         "derogation_type": null,
         "privacy_notice_updated": false,
         "transfer_disclosed_to_subject": true,
         "records_of_processing_exists": true,
-        "transfer_documented_in_ropa": false
+        "transfer_documented_in_ropa": false,
+        "data_subject_rights_process_ready": true,
+        "privacy_by_design_review_completed": true
       }
     },
     {
@@ -115,12 +123,15 @@
         "transfer_impact_assessment_completed": false,
         "supplemental_measures_documented": false,
         "incident_response_in_place": true,
+        "breach_notification_ready_72h": true,
         "derogation_used": false,
         "derogation_type": null,
         "privacy_notice_updated": true,
         "transfer_disclosed_to_subject": true,
         "records_of_processing_exists": true,
-        "transfer_documented_in_ropa": true
+        "transfer_documented_in_ropa": true,
+        "data_subject_rights_process_ready": true,
+        "privacy_by_design_review_completed": true
       }
     },
     {
@@ -156,12 +167,15 @@
         "transfer_impact_assessment_completed": false,
         "supplemental_measures_documented": false,
         "incident_response_in_place": true,
+        "breach_notification_ready_72h": true,
         "derogation_used": false,
         "derogation_type": null,
         "privacy_notice_updated": true,
         "transfer_disclosed_to_subject": true,
         "records_of_processing_exists": true,
-        "transfer_documented_in_ropa": true
+        "transfer_documented_in_ropa": true,
+        "data_subject_rights_process_ready": true,
+        "privacy_by_design_review_completed": true
       }
     }
   ]
