@@ -120,6 +120,108 @@ Do not place access keys, secret keys, or tokens in frontend code or browser
 storage. Use `backend/.env.example` as a template and keep real credentials in
 local/server environment variables.
 
+## AWS Online Integration - Web-Based Flow
+
+For demos and real browser-based onboarding, users do not run AWS CLI commands
+and never paste AWS access keys into the frontend.
+
+1. Click `AWS 연결 시작` in Border Checker.
+2. Border Checker generates a `connection_id` and random per-connection
+   `external_id`.
+3. Click the AWS Console CloudFormation Quick Create link.
+4. Create the stack. The template creates `BorderCheckerRole` with an
+   `sts:ExternalId` trust condition.
+5. Paste the CloudFormation output `RoleArn` back into Border Checker.
+6. Click `연결 확인`; the backend tests `sts:AssumeRole`.
+7. Enter an S3 bucket name and click `버킷 검사하기`.
+8. Click `부족한 설정 자동 적용` to apply:
+   - AES256 default encryption
+   - Public Access Block 4 settings
+   - HTTPS-only bucket policy
+   - S3 tags for `data_type`, `contains_sensitive_data`, `uses_processor`
+9. Click `법률 평가 입력값으로 반영` to copy the checked technical facts into
+   the policy evaluation input.
+
+Backend environment variables:
+
+```bash
+BORDER_CHECKER_AWS_PRINCIPAL_ARN=arn:aws:iam::<backend-account-id>:role/<backend-role>
+BORDER_CHECKER_AWS_CFN_TEMPLATE_URL=https://.../aws_border_checker_role.yaml
+AWS_REGION=ap-northeast-2
+AWS_PROFILE=optional-local-profile
+```
+
+The CloudFormation template is stored at:
+
+```bash
+backend/app/cloud_templates/aws_border_checker_role.yaml
+```
+
+The template grants S3 read permissions needed for inspection and, when
+remediation is enabled, S3 write permissions needed to apply recommended
+settings. `s3:CreateBucket` is intentionally excluded by default.
+
+## AWS Online Integration - Simple Access Key Flow
+
+The simple Access Key flow is for fast testing and demos. Users can enter an
+AWS Access Key ID, Secret Access Key, Region, and S3 Bucket Name directly in the
+web UI, then run the S3 configuration check without installing or running AWS
+CLI.
+
+Security notes:
+
+- The entered keys are not saved to the database.
+- The entered keys are not saved to frontend `localStorage`, `sessionStorage`,
+  cookies, or any other browser storage.
+- The backend uses the keys only in memory for the current request.
+- Production use should prefer the IAM Role + STS AssumeRole flow.
+
+Read-only check permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetBucketEncryption",
+        "s3:GetBucketTagging",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketPublicAccessBlock"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+Permissions for automatic recommended settings:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:GetBucketEncryption",
+        "s3:GetBucketTagging",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:PutBucketEncryption",
+        "s3:PutBucketTagging",
+        "s3:PutBucketPolicy",
+        "s3:PutBucketPublicAccessBlock"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
 ## Run Locally
 
 ### 1. Backend

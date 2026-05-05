@@ -42,7 +42,7 @@ export function applyCloudDataToFormState(
     "contains_sensitive_data",
     "uses_processor",
   ]) {
-    if (field in normalized) {
+    if (field in normalized && normalized[field] !== null) {
       next[field] = boolToState(normalized[field]);
     }
   }

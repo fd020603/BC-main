@@ -3,10 +3,9 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { PACK_UI_DEFINITIONS } from "./guided-pack-config";
-import {
-  applyCloudDataToFormState,
-  CloudDiscoveryPanel,
-} from "./cloud-discovery-panel";
+import { AwsIntegrationPanel } from "./aws-integration-panel";
+import { AwsIntegrationProvider } from "./context/aws-integration-context";
+import { applyCloudDataToFormState } from "./cloud-discovery-panel";
 import type {
   GuidedField,
   GuidedFormState,
@@ -16,6 +15,7 @@ import { ExplainabilityPanel, ResultPanel } from "./workspace-output-panels";
 import { buildErrorMessage, fetchJson } from "./workspace-runtime";
 import type {
   EvaluationResult,
+  JsonObject,
   PackDetail,
   PackSummary,
 } from "./workspace-types";
@@ -32,6 +32,15 @@ import {
 } from "./workspace-ui";
 
 const SELECTED_PACK_STORAGE_KEY = "border-checker-selected-pack";
+const CLOUD_DISCOVERY_FIELD_KEYS = [
+  "current_region",
+  "encryption_at_rest",
+  "encryption_in_transit",
+  "access_control_in_place",
+  "data_type",
+  "contains_sensitive_data",
+  "uses_processor",
+] as const;
 
 type ScreenMode = "intro" | "step" | "review" | "result";
 
@@ -99,12 +108,44 @@ function collectVisibleStepFields(
   );
 }
 
+function isKnownCloudValue(value: unknown) {
+  return value !== null && value !== undefined && value !== "";
+}
+
+function getCloudAppliedFieldKeys(normalized: JsonObject) {
+  return CLOUD_DISCOVERY_FIELD_KEYS.filter((field) =>
+    isKnownCloudValue(normalized[field]),
+  );
+}
+
+function fieldLabelForKey(definition: PackUiDefinition, key: string) {
+  for (const step of definition.steps) {
+    const field = step.fields.find((item) => item.key === key);
+    if (field) {
+      return field.label;
+    }
+  }
+  return key;
+}
+
+function hideCloudAppliedFields(
+  fields: GuidedField[],
+  cloudAppliedFields: string[],
+) {
+  const hidden = new Set(cloudAppliedFields);
+  return fields.filter((field) => !hidden.has(field.key));
+}
+
 function collectStepMissingFields(
   definition: PackUiDefinition,
   state: GuidedFormState,
   stepIndex: number,
+  cloudAppliedFields: string[] = [],
 ) {
-  return collectVisibleStepFields(definition, state, stepIndex)
+  return hideCloudAppliedFields(
+    collectVisibleStepFields(definition, state, stepIndex),
+    cloudAppliedFields,
+  )
     .filter((field) => field.required)
     .filter((field) => !state[field.key])
     .map((field) => field.label);
@@ -148,20 +189,25 @@ export function GuidedSingleFlowPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
+  const [cloudAppliedFields, setCloudAppliedFields] = useState<string[]>([]);
   const [, startTransition] = useTransition();
 
   const packDefinition =
     PACK_UI_DEFINITIONS[selectedPackId] ?? PACK_UI_DEFINITIONS.gdpr;
   const currentStep = packDefinition.steps[stepIndex];
-  const visibleFields = collectVisibleStepFields(
-    packDefinition,
-    formState,
-    stepIndex,
+  const visibleFields = hideCloudAppliedFields(
+    collectVisibleStepFields(
+      packDefinition,
+      formState,
+      stepIndex,
+    ),
+    cloudAppliedFields,
   );
   const currentStepMissing = collectStepMissingFields(
     packDefinition,
     formState,
     stepIndex,
+    cloudAppliedFields,
   );
   const overallMissing = packDefinition.validate(formState);
   const advisoryNotes = packDefinition.buildAdvisoryNotes(formState);
@@ -228,6 +274,7 @@ export function GuidedSingleFlowPage() {
 
     startTransition(() => {
       setFormState(nextState);
+      setCloudAppliedFields([]);
       setStepIndex(0);
       setScreenMode("intro");
       setEvaluationResult(null);
@@ -383,11 +430,23 @@ export function GuidedSingleFlowPage() {
     window.localStorage.removeItem(packDefinition.storageKey);
     startTransition(() => {
       setFormState({ ...packDefinition.defaultState });
+      setCloudAppliedFields([]);
       setStepIndex(0);
       setScreenMode("intro");
       setEvaluationResult(null);
       setErrorMessage(null);
       setStatusMessage("입력을 초기화했습니다. 다시 시작해 주세요.");
+    });
+  }
+
+  function clearAwsAppliedFormValues() {
+    setCloudAppliedFields([]);
+    setFormState((current) => {
+      const next = { ...current };
+      for (const key of CLOUD_DISCOVERY_FIELD_KEYS) {
+        next[key] = packDefinition.defaultState[key] ?? "";
+      }
+      return next;
     });
   }
 
@@ -492,6 +551,7 @@ export function GuidedSingleFlowPage() {
   }
 
   return (
+    <AwsIntegrationProvider>
     <main className="app-shell min-h-screen overflow-hidden">
       <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-5 px-4 py-6 sm:px-6">
         <header className="flex items-center justify-between gap-4">
@@ -652,21 +712,40 @@ export function GuidedSingleFlowPage() {
                   ))}
                 </div>
 
-                <CloudDiscoveryPanel
+                <AwsIntegrationPanel
+                  onClearAppliedValues={clearAwsAppliedFormValues}
                   onApply={(normalized) => {
                     setFormState((current) =>
                       applyCloudDataToFormState(current, normalized),
                     );
+                    setCloudAppliedFields(getCloudAppliedFieldKeys(normalized));
                     setStatusMessage(
                       "클라우드에서 확인 가능한 기술 입력값을 현재 폼에 반영했습니다. 법적 판단 항목은 변경하지 않았습니다.",
                     );
                   }}
                 />
 
+                {cloudAppliedFields.length > 0 ? (
+                  <TextList
+                    title="AWS에서 자동 입력되어 숨긴 질문"
+                    items={cloudAppliedFields.map((key) =>
+                      fieldLabelForKey(packDefinition, key),
+                    )}
+                    compact
+                  />
+                ) : null}
+
                 <div className="grid gap-5">
-                  {visibleFields.map((field) => (
-                    <div key={field.key}>{renderField(field, formState, updateField)}</div>
-                  ))}
+                  {visibleFields.length > 0 ? (
+                    visibleFields.map((field) => (
+                      <div key={field.key}>{renderField(field, formState, updateField)}</div>
+                    ))
+                  ) : (
+                    <EmptyState
+                      title="이 단계의 기술 질문은 AWS에서 채워졌습니다."
+                      description="확인되지 않은 법률·정책 질문이 남아 있으면 다음 단계에서 계속 표시됩니다."
+                    />
+                  )}
                 </div>
 
                 <TextList title="입력 안내" items={advisoryNotes} />
@@ -811,5 +890,6 @@ export function GuidedSingleFlowPage() {
         </div>
       </div>
     </main>
+    </AwsIntegrationProvider>
   );
 }

@@ -59,6 +59,30 @@ export type CloudDiscoveryResponse = {
   raw_discovery?: JsonObject | null;
 };
 
+export type AwsConnectionStartResponse = {
+  connection_id: string;
+  external_id: string;
+  cloudformation_url: string;
+};
+
+export type AwsConnectionCompleteResponse = {
+  connection_id: string;
+  status: "connected";
+  role_arn: string;
+  caller_identity: JsonObject;
+};
+
+export type AwsS3CheckResponse = {
+  provider: "aws";
+  resource_type: "s3_bucket";
+  resource_id: string;
+  normalized_aws_data: JsonObject;
+  missing_items: string[];
+  warnings: string[];
+  evidence: JsonObject[];
+  raw_discovery: JsonObject;
+};
+
 export type PackDetail = {
   pack_id: string;
   pack_name: string;

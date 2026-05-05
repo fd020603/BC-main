@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.cloud_connections import router as cloud_connections_router
 from app.api.cloud_discovery import router as cloud_discovery_router
 from app.api.evaluate import router as evaluate_router
 from app.api.merge import router as merge_router
@@ -31,6 +32,7 @@ app.include_router(packs_router)
 app.include_router(evaluate_router)
 app.include_router(samples_router)
 app.include_router(cloud_discovery_router)
+app.include_router(cloud_connections_router)
 
 
 @app.get("/")
